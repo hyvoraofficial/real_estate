@@ -129,8 +129,6 @@ export const FloorPlanCarousel: React.FC = () => {
   const carouselContainerRef = useRef<HTMLDivElement>(null);
   const sheetsGroupRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [rotationAngle, setRotationAngle] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const [selectedPlanDetails, setSelectedPlanDetails] = useState<FloorPlan | null>(null);
 
   const { setCursor, resetCursor } = useCursor();
@@ -140,12 +138,30 @@ export const FloorPlanCarousel: React.FC = () => {
   const numPlans = plans.length;
   const anglePerPlan = 360 / numPlans; // 90 deg for 4 plans
 
-  // Track dragging state and inertia
+  // High performance refs for butter-smooth 60/120 FPS transforms without React re-render churn
+  const currentAngleRef = useRef<number>(0);
+  const activeIndexRef = useRef<number>(0);
+  const isDraggingRef = useRef<boolean>(false);
   const dragStartRef = useRef<{ x: number; angle: number; time: number }>({ x: 0, angle: 0, time: 0 });
   const velocityRef = useRef<number>(0);
-  const animationFrameRef = useRef<number | null>(null);
+  const tweenRef = useRef<gsap.core.Tween | null>(null);
 
-  // Scroll Entrance: sheets start rotated about ±70deg on Y, folded toward each other, then unfold to flat
+  // Apply rotation angle directly to the DOM with zero React re-render overhead during motion
+  const applyRotation = useCallback((angle: number) => {
+    currentAngleRef.current = angle;
+    if (sheetsGroupRef.current) {
+      sheetsGroupRef.current.style.transform = `rotateY(${angle}deg)`;
+    }
+    // Update active index state only when the dominant face changes
+    const normalized = ((-angle % 360) + 360) % 360;
+    const newIdx = Math.round(normalized / anglePerPlan) % numPlans;
+    if (newIdx !== activeIndexRef.current) {
+      activeIndexRef.current = newIdx;
+      setActiveIndex(newIdx);
+    }
+  }, [anglePerPlan, numPlans]);
+
+  // Scroll Entrance: sheets start rotated about ±18deg on X, folded, then unfold to flat
   useEffect(() => {
     if (!sectionRef.current || !sheetsGroupRef.current) return;
 
@@ -153,7 +169,6 @@ export const FloorPlanCarousel: React.FC = () => {
     if (prefersReducedMotion) return;
 
     const ctx = gsap.context(() => {
-      // Unfold scroll animation scrubbed
       gsap.fromTo(
         sheetsGroupRef.current,
         {
@@ -180,98 +195,107 @@ export const FloorPlanCarousel: React.FC = () => {
     return () => ctx.revert();
   }, []);
 
-  // Update active index based on angle
-  const updateActiveIndexFromAngle = useCallback((angle: number) => {
-    const normalized = ((-angle % 360) + 360) % 360;
-    const index = Math.round(normalized / anglePerPlan) % numPlans;
-    setActiveIndex(index);
-  }, [anglePerPlan, numPlans]);
-
-  // Pointer drag event handlers
+  // Pointer drag event handlers with silky inertia
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
+    if (tweenRef.current) {
+      tweenRef.current.kill();
     }
-    setIsDragging(true);
+    isDraggingRef.current = true;
     setCursor('drag', 'DRAG');
     dragStartRef.current = {
       x: e.clientX,
-      angle: rotationAngle,
+      angle: currentAngleRef.current,
       time: performance.now(),
     };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    velocityRef.current = 0;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return;
+    if (!isDraggingRef.current) return;
     const deltaX = e.clientX - dragStartRef.current.x;
     const now = performance.now();
     const dt = Math.max(1, now - dragStartRef.current.time);
 
-    // Degree change based on drag pixels
-    const degDelta = deltaX * 0.45;
+    // Ultra smooth drag sensitivity
+    const degDelta = deltaX * 0.35;
     const newAngle = dragStartRef.current.angle + degDelta;
 
-    velocityRef.current = (degDelta / dt) * 14;
-    setRotationAngle(newAngle);
-    updateActiveIndexFromAngle(newAngle);
+    velocityRef.current = (degDelta / dt) * 16;
+    applyRotation(newAngle);
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isDragging) return;
-    setIsDragging(false);
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    resetCursor();
     try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
       // ignore
     }
 
-    // Apply inertia and snap to nearest face with spring ease
-    let current = rotationAngle;
-    let vel = velocityRef.current;
+    // Apply inertia and snap smoothly to nearest card face with power3 deceleration
+    const current = currentAngleRef.current;
+    const vel = Math.max(-20, Math.min(20, velocityRef.current));
     
     // Target snap calculation
-    const predictedAngle = current + vel * 8;
+    const predictedAngle = current + vel * 6.5;
     const snapped = Math.round(predictedAngle / anglePerPlan) * anglePerPlan;
 
-    // Use GSAP to animate smooth spring snap
-    const animObj = { angle: current };
-    gsap.to(animObj, {
-      angle: snapped,
-      duration: 0.9,
-      ease: 'back.out(1.15)',
-      onUpdate: () => {
-        setRotationAngle(animObj.angle);
-        updateActiveIndexFromAngle(animObj.angle);
-      },
-      onComplete: () => {
-        updateActiveIndexFromAngle(snapped);
-      },
-    });
-  };
+    if (tweenRef.current) tweenRef.current.kill();
 
-  // Keyboard navigation
-  const rotateTo = (index: number) => {
-    const targetAngle = -index * anglePerPlan;
-    const animObj = { angle: rotationAngle };
-    gsap.to(animObj, {
-      angle: targetAngle,
-      duration: 0.8,
+    const animObj = { angle: current };
+    tweenRef.current = gsap.to(animObj, {
+      angle: snapped,
+      duration: 0.85,
       ease: 'power3.out',
       onUpdate: () => {
-        setRotationAngle(animObj.angle);
-        updateActiveIndexFromAngle(animObj.angle);
+        applyRotation(animObj.angle);
+      },
+      onComplete: () => {
+        applyRotation(snapped);
       },
     });
   };
 
+  // Ultra smooth rotational navigation to specific index
+  const rotateTo = useCallback((index: number) => {
+    if (tweenRef.current) tweenRef.current.kill();
+
+    const current = currentAngleRef.current;
+    const targetNominal = -index * anglePerPlan;
+
+    // Calculate shortest rotational delta to avoid awkward full spins
+    let delta = (targetNominal - current) % 360;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+
+    const targetAngle = current + delta;
+    const animObj = { angle: current };
+
+    tweenRef.current = gsap.to(animObj, {
+      angle: targetAngle,
+      duration: 0.85,
+      ease: 'power3.out',
+      onUpdate: () => {
+        applyRotation(animObj.angle);
+      },
+      onComplete: () => {
+        applyRotation(targetAngle);
+        activeIndexRef.current = index;
+        setActiveIndex(index);
+      },
+    });
+  }, [anglePerPlan, applyRotation]);
+
   const handlePrev = () => {
-    const prev = (activeIndex - 1 + numPlans) % numPlans;
+    const prev = (activeIndexRef.current - 1 + numPlans) % numPlans;
     rotateTo(prev);
   };
 
   const handleNext = () => {
-    const next = (activeIndex + 1) % numPlans;
+    const next = (activeIndexRef.current + 1) % numPlans;
     rotateTo(next);
   };
 
@@ -292,7 +316,7 @@ export const FloorPlanCarousel: React.FC = () => {
       id="plans"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      className={`relative w-full py-28 md:py-36 px-6 md:px-12 overflow-hidden focus:outline-none transition-colors duration-500 ${
+      className={`relative w-full py-14 md:py-20 px-6 md:px-12 overflow-hidden focus:outline-none transition-colors duration-500 ${
         isDark ? 'bg-[#0a0a0b] text-[#f2efe9]' : 'bg-[#f4f1ea] text-[#0a0a0b]'
       }`}
       aria-label="Floor Plans 3D Interactive Carousel"
@@ -304,14 +328,14 @@ export const FloorPlanCarousel: React.FC = () => {
 
       <div className="max-w-7xl mx-auto flex flex-col items-center relative z-10">
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
+        <div className="text-center max-w-2xl mx-auto mb-6 md:mb-8 space-y-2">
           <p className={`text-[10px] md:text-xs tracking-ultra uppercase font-medium ${
             isDark ? 'text-gold' : 'text-[#b88d3b]'
           }`}>
             {siteConfig.floorPlansSection.label}
           </p>
 
-          <h2 className={`font-serif text-3xl sm:text-5xl md:text-6xl font-light tracking-tight leading-[1.1] ${
+          <h2 className={`font-serif text-3xl sm:text-4xl md:text-5xl font-light tracking-tight leading-[1.1] ${
             isDark ? 'text-cream' : 'text-[#0a0a0b]'
           }`}>
             {siteConfig.floorPlansSection.headingPrefix}{' '}
@@ -340,17 +364,54 @@ export const FloorPlanCarousel: React.FC = () => {
           onMouseEnter={() => setCursor('drag', 'DRAG')}
           onMouseLeave={() => {
             resetCursor();
-            if (isDragging) setIsDragging(false);
+            if (isDraggingRef.current) {
+              isDraggingRef.current = false;
+            }
           }}
-          className="relative w-full max-w-4xl h-[480px] sm:h-[520px] md:h-[560px] perspective-1200 cursor-grab active:cursor-grabbing select-none flex items-center justify-center"
+          className="relative w-full max-w-4xl h-[420px] sm:h-[460px] md:h-[470px] perspective-1200 cursor-grab active:cursor-grabbing select-none flex items-center justify-center"
         >
+          {/* Floating Desktop Side Arrow Left */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePrev();
+            }}
+            aria-label="Previous Floor Plan"
+            onMouseEnter={() => setCursor('hover')}
+            onMouseLeave={resetCursor}
+            className={`hidden lg:flex absolute left-2 xl:-left-6 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full items-center justify-center transition-all duration-300 shadow-xl cursor-pointer group active:scale-95 ${
+              isDark
+                ? 'bg-[#15161c]/95 border-2 border-gold/60 text-gold hover:bg-gold hover:text-[#0a0a0b] hover:border-gold hover:shadow-[0_0_25px_rgba(212,168,83,0.5)]'
+                : 'bg-white border-2 border-[#b88d3b] text-[#b88d3b] hover:bg-[#b88d3b] hover:text-white hover:border-[#b88d3b] shadow-[0_4px_20px_rgba(0,0,0,0.12)]'
+            }`}
+          >
+            <ArrowLeft size={20} strokeWidth={2.5} className="transition-transform group-hover:-translate-x-0.5" />
+          </button>
+
+          {/* Floating Desktop Side Arrow Right */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNext();
+            }}
+            aria-label="Next Floor Plan"
+            onMouseEnter={() => setCursor('hover')}
+            onMouseLeave={resetCursor}
+            className={`hidden lg:flex absolute right-2 xl:-right-6 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full items-center justify-center transition-all duration-300 shadow-xl cursor-pointer group active:scale-95 ${
+              isDark
+                ? 'bg-[#15161c]/95 border-2 border-gold/60 text-gold hover:bg-gold hover:text-[#0a0a0b] hover:border-gold hover:shadow-[0_0_25px_rgba(212,168,83,0.5)]'
+                : 'bg-white border-2 border-[#b88d3b] text-[#b88d3b] hover:bg-[#b88d3b] hover:text-white hover:border-[#b88d3b] shadow-[0_4px_20px_rgba(0,0,0,0.12)]'
+            }`}
+          >
+            <ArrowRight size={20} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />
+          </button>
+
           {/* Rotatable 3D Set */}
           <div
             ref={sheetsGroupRef}
-            className="relative w-full max-w-[340px] sm:max-w-[460px] md:max-w-[580px] h-[380px] sm:h-[440px] preserve-3d"
+            className="relative w-full max-w-[340px] sm:max-w-[460px] md:max-w-[580px] h-[370px] sm:h-[410px] md:h-[420px] preserve-3d will-change-transform"
             style={{
-              transform: `rotateY(${rotationAngle}deg)`,
-              transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+              transform: 'rotateY(0deg)',
             }}
           >
             {plans.map((plan, i) => {
@@ -362,8 +423,9 @@ export const FloorPlanCarousel: React.FC = () => {
               return (
                 <div
                   key={plan.id}
-                  className={`absolute inset-0 rounded-2xl p-6 sm:p-8 bg-[#fdfcf9] text-[#111114] shadow-dark-sheet border border-gold/30 flex flex-col justify-between transition-opacity duration-500 backface-hidden ${
-                    isSelected ? 'opacity-100 ring-2 ring-gold/40' : 'opacity-40 pointer-events-none'
+                  onClick={() => !isSelected && rotateTo(i)}
+                  className={`absolute inset-0 rounded-2xl p-6 sm:p-7 bg-[#fdfcf9] text-[#111114] shadow-dark-sheet border border-gold/30 flex flex-col justify-between transition-all duration-500 backface-hidden cursor-pointer ${
+                    isSelected ? 'opacity-100 ring-2 ring-gold/40' : 'opacity-40 hover:opacity-75'
                   }`}
                   style={{
                     transform: `rotateY(${faceAngle}deg) translateZ(${translateZ}px)`,
@@ -373,7 +435,7 @@ export const FloorPlanCarousel: React.FC = () => {
                   }}
                 >
                   {/* Blueprint Top Header Bar */}
-                  <div className="flex items-start justify-between border-b border-[#111114]/10 pb-4">
+                  <div className="flex items-start justify-between border-b border-[#111114]/10 pb-3">
                     <div>
                       <span className="text-[10px] tracking-widest uppercase font-semibold text-[#b88d3b]">
                         {plan.level}
@@ -391,7 +453,7 @@ export const FloorPlanCarousel: React.FC = () => {
                   </div>
 
                   {/* SVG Blueprint Drawing */}
-                  <div className="relative my-auto w-full h-[220px] sm:h-[250px] flex items-center justify-center p-2 bg-[#faf8f4] rounded-lg border border-[#111114]/5 overflow-hidden">
+                  <div className="relative my-auto w-full h-[190px] sm:h-[220px] flex items-center justify-center p-2 bg-[#faf8f4] rounded-lg border border-[#111114]/5 overflow-hidden">
                     {renderBlueprintSvg(plan.svgType)}
                   </div>
 
@@ -419,50 +481,68 @@ export const FloorPlanCarousel: React.FC = () => {
           </div>
         </div>
 
-        {/* Carousel Navigation Arrows & Face Dots */}
-        <div className="flex items-center gap-6 mt-4">
+        {/* Carousel Navigation Arrows & Controls Under Card */}
+        <div className="flex items-center justify-center gap-4 sm:gap-6 mt-6 z-20">
+          {/* Previous Arrow Button */}
           <button
+            id="carousel-prev-btn"
             onClick={handlePrev}
             aria-label="Previous Floor Plan"
             onMouseEnter={() => setCursor('hover')}
             onMouseLeave={resetCursor}
-            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 hover:scale-105 ${
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer group active:scale-95 ${
               isDark
-                ? 'border-white/10 text-cream hover:border-gold hover:text-gold'
-                : 'border-black/10 text-[#0a0a0b] hover:border-[#b88d3b] hover:text-[#b88d3b]'
+                ? 'bg-[#15161c] border-2 border-gold/60 text-gold hover:bg-gold hover:text-[#0a0a0b] hover:border-gold hover:shadow-[0_0_30px_rgba(212,168,83,0.5)]'
+                : 'bg-white border-2 border-[#b88d3b] text-[#b88d3b] hover:bg-[#b88d3b] hover:text-white hover:border-[#b88d3b] hover:shadow-[0_4px_25px_rgba(184,141,59,0.35)] shadow-black/10'
             }`}
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={22} strokeWidth={2.5} className="transition-transform group-hover:-translate-x-0.5" />
           </button>
 
-          {/* Dots Indicator */}
-          <div className="flex items-center gap-2">
-            {plans.map((p, idx) => (
-              <button
-                key={p.id}
-                onClick={() => rotateTo(idx)}
-                aria-label={`Go to ${p.name}`}
-                className={`transition-all duration-300 rounded-full ${
-                  idx === activeIndex
-                    ? isDark ? 'w-7 h-1.5 bg-gold' : 'w-7 h-1.5 bg-[#b88d3b]'
-                    : isDark ? 'w-1.5 h-1.5 bg-white/20 hover:bg-white/50' : 'w-1.5 h-1.5 bg-black/20 hover:bg-black/50'
-                }`}
-              />
-            ))}
+          {/* Dots & Counter Pill */}
+          <div className={`flex items-center gap-3.5 px-5 py-2.5 rounded-full border backdrop-blur-md shadow-md transition-colors ${
+            isDark 
+              ? 'bg-[#15161c]/90 border-gold/30 text-cream' 
+              : 'bg-white/95 border-[#b88d3b]/30 text-[#0a0a0b]'
+          }`}>
+            <span className={`text-xs font-mono font-semibold tracking-wider ${
+              isDark ? 'text-gold' : 'text-[#b88d3b]'
+            }`}>
+              0{activeIndex + 1} <span className={isDark ? 'text-white/30' : 'text-black/30'}>/</span> 0{numPlans}
+            </span>
+
+            <div className={`w-[1px] h-3.5 ${isDark ? 'bg-white/20' : 'bg-black/20'}`} />
+
+            <div className="flex items-center gap-2">
+              {plans.map((p, idx) => (
+                <button
+                  key={p.id}
+                  onClick={() => rotateTo(idx)}
+                  aria-label={`Go to ${p.name}`}
+                  className={`transition-all duration-300 rounded-full cursor-pointer ${
+                    idx === activeIndex
+                      ? isDark ? 'w-6 h-2 bg-gold' : 'w-6 h-2 bg-[#b88d3b]'
+                      : isDark ? 'w-2 h-2 bg-white/30 hover:bg-white/70' : 'w-2 h-2 bg-black/30 hover:bg-black/70'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
 
+          {/* Next Arrow Button */}
           <button
+            id="carousel-next-btn"
             onClick={handleNext}
             aria-label="Next Floor Plan"
             onMouseEnter={() => setCursor('hover')}
             onMouseLeave={resetCursor}
-            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 hover:scale-105 ${
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer group active:scale-95 ${
               isDark
-                ? 'border-white/10 text-cream hover:border-gold hover:text-gold'
-                : 'border-black/10 text-[#0a0a0b] hover:border-[#b88d3b] hover:text-[#b88d3b]'
+                ? 'bg-[#15161c] border-2 border-gold/60 text-gold hover:bg-gold hover:text-[#0a0a0b] hover:border-gold hover:shadow-[0_0_30px_rgba(212,168,83,0.5)]'
+                : 'bg-white border-2 border-[#b88d3b] text-[#b88d3b] hover:bg-[#b88d3b] hover:text-white hover:border-[#b88d3b] hover:shadow-[0_4px_25px_rgba(184,141,59,0.35)] shadow-black/10'
             }`}
           >
-            <ArrowRight size={16} />
+            <ArrowRight size={22} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
 
