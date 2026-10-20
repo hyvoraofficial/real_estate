@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-page: #f4f1ea;
+  --surface-page: #ffffff;
+  --surface-elevated: #eae6dd;
+  --text-page: #0a0a0b;
+  --text-muted: #6b6760;
+  --border-page: rgba(10, 10, 11, 0.08);
+  --gold: #b88d3b;
+  --gold-light: #d4a853;
+  --gold-dark: #916d26;
+  --nav-bg: rgba(244, 241, 234, 0.85);
+  --scrollbar-track: #f4f1ea;
+  --scrollbar-thumb: #d6d0c2;
+}
+
+html.dark {
+  --bg-page: #0a0a0b;
+  --surface-page: #111114;
+  --surface-elevated: #17171d;
+  --text-page: #f2efe9;
+  --text-muted: #8b8780;
+  --border-page: rgba(242, 239, 233, 0.08);
+  --gold: #d4a853;
+  --gold-light: #e6c57d;
+  --gold-dark: #b88d3b;
+  --nav-bg: rgba(10, 10, 11, 0.85);
+  --scrollbar-track: #0a0a0b;
+  --scrollbar-thumb: #232220;
+}
+
+html, body {
+  background-color: var(--bg-page);
+  color: var(--text-page);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Luxury Serif Headings */
+h1, h2, h3, h4, .font-serif {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+/* Italic serif accent styling */
+em, .font-serif em {
+  font-style: italic;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.serif-italic-gold {
+  font-style: italic;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  color: var(--gold);
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
+
+/* Glassmorphism utilities */
+.glass-panel {
+  background: var(--surface-page);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-page);
+}
+
+.glass-nav {
+  background: var(--nav-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-page);
+}
+
+/* 3D Perspective Preservation */
+.perspective-1200 {
+  perspective: 1200px;
+  -webkit-perspective: 1200px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Grain texture overlay */
+.bg-noise {
+  background-image: radial-gradient(rgba(212, 168, 83, 0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* Gold border transition effect */
+.gold-draw-border {
+  position: relative;
+}
+.gold-draw-border::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  transition: border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+  pointer-events: none;
+}
+.gold-draw-border:hover::after {
+  border-color: rgba(212, 168, 83, 0.6);
+  box-shadow: 0 0 25px rgba(212, 168, 83, 0.15);
+}
+
+/* Custom Cursor default hide on non-pointer */
+@media (pointer: coarse) {
+  .custom-cursor {
+    display: none !important;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
