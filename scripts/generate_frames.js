@@ -26,16 +26,16 @@ function generateFrameSvg(frameIndex) {
 
   // Central Coordinates
   const centerX = WIDTH / 2;
-  const baseY = HEIGHT * 0.88;
-  const towerHeight = HEIGHT * 0.75; // ~675px tall
+  const baseY = HEIGHT * 0.90; // 810px grounded base
+  const towerHeight = HEIGHT * 0.85; // 765px tall (increased height)
 
-  // WIDE BUILDING: Spanning ~62% of viewport width (860px wide on 1440px canvas)
-  const towerWidth = 860;
-  const leftWingWidth = 290;
-  const rightWingWidth = 290;
-  const centerBayWidth = 280;
+  // TALL ARCHITECTURAL SKYSCRAPER RATIO (820px wide by 765px tall)
+  const towerWidth = 820;
+  const leftWingWidth = 275;
+  const rightWingWidth = 275;
+  const centerBayWidth = 270;
 
-  const numFloors = 22;
+  const numFloors = 26; // Increased from 22 to 26 floors for a much taller multi-tiered skyscraper
   const floorHeight = towerHeight / numFloors;
 
   // Sky colors: Dark moody stormy clouds on top, warm amber sunset horizon glow on right
@@ -48,8 +48,9 @@ function generateFrameSvg(frameIndex) {
   // When t > 0.58, the center building block minimises and moves back in perspective
   const recedeT = clamp((t - 0.58) / 0.42, 0, 1);
   const recedeEase = easeInOutCubic(recedeT);
-  const buildingScale = 1.0 - recedeEase * 0.22; // Smoothly minimises from 1.0 to 0.78
-  const buildingRecedeY = recedeEase * 18; // Moves back towards horizon
+  // Minimise to 0.88 (instead of 0.78) so the building maintains majestic height on screen
+  const buildingScale = 1.0 - recedeEase * 0.12; 
+  const buildingRecedeY = recedeEase * 12; // Moves back towards horizon
 
   let horizonSvg = '';
   let buildingSvg = '';
@@ -248,10 +249,10 @@ function generateFrameSvg(frameIndex) {
   const crownT = clamp((t - 0.65) / 0.3, 0, 1);
   const crownEase = easeInOutCubic(crownT);
   const crownY = baseY - towerHeight;
-  const crownDisperse = (1 - crownEase) * 240;
+  const crownDisperse = (1 - crownEase) * 120;
 
-  // Overhanging roof canopy is wider than the tower itself: 940px wide!
-  const canopyWidth = towerWidth + 80; // 940px wide
+  // Overhanging roof canopy is wider than the tower itself: 900px wide
+  const canopyWidth = towerWidth + 80;
   const canopyLeftX = centerX - canopyWidth / 2;
   const canopyRightX = centerX + canopyWidth / 2;
 
@@ -266,19 +267,19 @@ function generateFrameSvg(frameIndex) {
         <!-- Slanted glass atrium penthouse pavilion beneath canopy -->
         <polygon points="${towerLeftX + 40},${crownY + 8} ${towerRightX - 40},${crownY + 8} ${towerRightX - 80},${crownY + 50} ${towerLeftX + 80},${crownY + 50}" fill="url(#crownGlassGrad)" stroke="#d4a853" stroke-width="1" opacity="0.85"/>
 
-        <!-- Vertical Architectural Spires & Fins (as in Reference Image 3) -->
-        <line x1="${centerX - 180}" y1="${crownY - 24}" x2="${centerX - 180}" y2="${crownY - 75}" stroke="#d4a853" stroke-width="2.5"/>
-        <line x1="${centerX - 60}" y1="${crownY - 24}" x2="${centerX - 60}" y2="${crownY - 95}" stroke="#d4a853" stroke-width="2.5"/>
-        <line x1="${centerX + 60}" y1="${crownY - 24}" x2="${centerX + 60}" y2="${crownY - 95}" stroke="#d4a853" stroke-width="2.5"/>
-        <line x1="${centerX + 180}" y1="${crownY - 24}" x2="${centerX + 180}" y2="${crownY - 75}" stroke="#d4a853" stroke-width="2.5"/>
+        <!-- Vertical Architectural Spires & Fins (Reference Image 3) -->
+        <line x1="${centerX - 180}" y1="${crownY - 24}" x2="${centerX - 180}" y2="${crownY - 35}" stroke="#d4a853" stroke-width="2"/>
+        <line x1="${centerX - 60}" y1="${crownY - 24}" x2="${centerX - 60}" y2="${crownY - 40}" stroke="#d4a853" stroke-width="2.5"/>
+        <line x1="${centerX + 60}" y1="${crownY - 24}" x2="${centerX + 60}" y2="${crownY - 40}" stroke="#d4a853" stroke-width="2.5"/>
+        <line x1="${centerX + 180}" y1="${crownY - 24}" x2="${centerX + 180}" y2="${crownY - 35}" stroke="#d4a853" stroke-width="2"/>
 
         <!-- Outer beacon antennas -->
-        <line x1="${canopyLeftX + 60}" y1="${crownY - 24}" x2="${canopyLeftX + 60}" y2="${crownY - 60}" stroke="#91753c" stroke-width="1.5"/>
-        <line x1="${canopyRightX - 60}" y1="${crownY - 24}" x2="${canopyRightX - 60}" y2="${crownY - 60}" stroke="#91753c" stroke-width="1.5"/>
+        <line x1="${canopyLeftX + 60}" y1="${crownY - 24}" x2="${canopyLeftX + 60}" y2="${crownY - 32}" stroke="#91753c" stroke-width="1.5"/>
+        <line x1="${canopyRightX - 60}" y1="${crownY - 24}" x2="${canopyRightX - 60}" y2="${crownY - 32}" stroke="#91753c" stroke-width="1.5"/>
 
         <!-- Aircraft warning red beacon dots -->
-        <circle cx="${centerX - 60}" cy="${crownY - 95}" r="3" fill="#ff4444" opacity="${0.6 + Math.sin(frameIndex * 0.4) * 0.4}"/>
-        <circle cx="${centerX + 60}" cy="${crownY - 95}" r="3" fill="#ff4444" opacity="${0.6 + Math.sin(frameIndex * 0.4) * 0.4}"/>
+        <circle cx="${centerX - 60}" cy="${crownY - 40}" r="2.5" fill="#ff4444" opacity="${0.6 + Math.sin(frameIndex * 0.4) * 0.4}"/>
+        <circle cx="${centerX + 60}" cy="${crownY - 40}" r="2.5" fill="#ff4444" opacity="${0.6 + Math.sin(frameIndex * 0.4) * 0.4}"/>
 
         <!-- Warm golden architectural wash glow under canopy -->
         <polygon points="${towerLeftX + 60},${crownY + 8} ${towerRightX - 60},${crownY + 8} ${towerRightX - 40},${crownY + 80} ${towerLeftX + 40},${crownY + 80}" fill="url(#goldCrownWash)" opacity="${0.25 + crownEase * 0.35}"/>

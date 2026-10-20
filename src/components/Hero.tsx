@@ -90,10 +90,10 @@ export const Hero: React.FC = () => {
     ctx.fillRect(0, 0, width, height);
 
     const centerX = width / 2;
-    const baseY = height * 0.88;
-    const towerH = height * 0.74;
-    const towerW = Math.min(880, width * 0.64);
-    const floors = 22;
+    const baseY = height * 0.90;
+    const towerH = height * 0.85;
+    const towerW = Math.min(820, width * 0.60);
+    const floors = 26;
     const floorH = towerH / floors;
 
     // Draw wide assembling tower
