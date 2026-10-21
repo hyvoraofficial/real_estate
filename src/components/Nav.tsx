@@ -139,72 +139,137 @@ export const Nav: React.FC<NavProps> = ({ onOpenBooking }) => {
             </button>
           </div>
 
-          {/* Mobile Right Controls: Theme + Menu */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Mobile Right Controls: Theme + Menu (48px Touch Targets) */}
+          <div className="flex md:hidden items-center gap-1.5">
             <button
               id="mobile-theme-toggle-btn"
               onClick={toggleTheme}
               aria-label="Toggle Theme"
-              className={`p-2 rounded-full transition-colors ${
-                isDark ? 'text-gold' : 'text-[#b88d3b]'
+              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 border ${
+                isDark
+                  ? 'border-white/10 text-gold bg-white/5 active:bg-white/10'
+                  : 'border-black/10 text-[#b88d3b] bg-black/5 active:bg-black/10'
               }`}
             >
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <button
+              id="mobile-menu-toggle-btn"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle Navigation Menu"
-              className={`p-2 transition-colors ${
-                isDark ? 'text-[#f2efe9] hover:text-gold' : 'text-[#0a0a0b] hover:text-[#b88d3b]'
+              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 border ${
+                isDark
+                  ? 'border-gold/30 text-[#f2efe9] bg-white/5 hover:text-gold active:bg-white/10'
+                  : 'border-[#b88d3b]/30 text-[#0a0a0b] bg-black/5 hover:text-[#b88d3b] active:bg-black/10'
               }`}
             >
-              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+              {mobileMenuOpen ? <X size={20} className="text-gold" /> : <Menu size={20} />}
             </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Drawer Menu - High-End Tactile Overlay */}
       <div
-        className={`fixed inset-0 z-30 transition-all duration-500 md:hidden flex flex-col justify-center px-8 backdrop-blur-xl ${
-          isDark ? 'bg-[#0a0a0b]/95 text-cream' : 'bg-[#f4f1ea]/95 text-[#0a0a0b]'
+        className={`fixed inset-0 z-50 transition-all duration-500 md:hidden flex flex-col justify-between p-6 sm:p-8 backdrop-blur-2xl ${
+          isDark ? 'bg-[#0a0a0b]/98 text-[#f2efe9]' : 'bg-[#f4f1ea]/98 text-[#0a0a0b]'
         } ${
-          mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          mobileMenuOpen ? 'opacity-100 pointer-events-auto translate-y-0' : 'opacity-0 pointer-events-none -translate-y-4'
         }`}
       >
-        <div className="flex flex-col gap-6 text-center">
-          {siteConfig.navigation.links.map((link) => (
+        {/* Top Header inside Drawer */}
+        <div className="flex items-center justify-between border-b pb-4 border-current/10">
+          <div className="flex items-center gap-2.5">
+            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-serif text-sm border ${
+              isDark ? 'border-gold/50 text-gold bg-gold/10' : 'border-[#b88d3b] text-[#b88d3b] bg-[#b88d3b]/10'
+            }`}>
+              {siteConfig.brand.monogram}
+            </span>
+            <span className="font-sans text-xs tracking-widest_luxury uppercase font-semibold">
+              {siteConfig.brand.name}
+            </span>
+          </div>
+
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close Navigation Menu"
+            className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all active:scale-90 ${
+              isDark ? 'border-white/20 text-[#f2efe9]' : 'border-black/20 text-[#0a0a0b]'
+            }`}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Navigation Links with generous tap targets */}
+        <div className="flex flex-col gap-5 my-auto text-left py-4">
+          <span className={`text-[10px] tracking-ultra uppercase font-semibold ${
+            isDark ? 'text-gold' : 'text-[#b88d3b]'
+          }`}>
+            DIRECTORY
+          </span>
+          {siteConfig.navigation.links.map((link, idx) => (
             <a
               key={link.label}
               href={link.href}
               onClick={(e) => handleNavClick(e, link.href)}
-              className="font-serif text-3xl hover:text-gold transition-colors"
+              className="group flex items-center justify-between py-2 border-b border-current/5 active:translate-x-2 transition-transform"
             >
-              {link.label}
+              <div className="flex items-baseline gap-3">
+                <span className={`font-mono text-xs opacity-50 ${isDark ? 'text-gold' : 'text-[#b88d3b]'}`}>
+                  0{idx + 1}
+                </span>
+                <span className="font-serif text-3xl font-light tracking-wide group-hover:text-gold transition-colors">
+                  {link.label}
+                </span>
+              </div>
+              <span className={`text-sm opacity-40 group-hover:opacity-100 ${isDark ? 'text-gold' : 'text-[#b88d3b]'}`}>
+                →
+              </span>
             </a>
           ))}
-          <div className="pt-6 flex flex-col gap-4 max-w-xs mx-auto w-full">
-            <button
-              onClick={toggleTheme}
-              className={`py-2.5 rounded-full border text-xs tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${
+        </div>
+
+        {/* Drawer Bottom Actions: Direct Dial, WhatsApp & Consultation */}
+        <div className="flex flex-col gap-3 pt-4 border-t border-current/10">
+          <div className="grid grid-cols-2 gap-2.5">
+            <a
+              href={`tel:${siteConfig.footer.contacts.phone.replace(/[^0-9+]/g, '')}`}
+              className={`py-3 px-3 rounded-xl border text-xs tracking-wider uppercase font-medium flex items-center justify-center gap-2 active:scale-95 transition-all ${
                 isDark
-                  ? 'border-white/20 text-gold'
-                  : 'border-black/20 text-[#b88d3b]'
+                  ? 'border-white/15 bg-white/5 text-[#f2efe9]'
+                  : 'border-black/15 bg-black/5 text-[#0a0a0b]'
               }`}
             >
-              {isDark ? <Sun size={15} /> : <Moon size={15} />}
-              <span>{isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}</span>
-            </button>
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenBooking();
-              }}
-              className="w-full py-3 rounded-full border border-gold text-gold text-sm tracking-widest uppercase hover:bg-gold hover:text-[#0a0a0b] transition-all"
+              <span>Direct Call</span>
+            </a>
+            <a
+              href={`https://wa.me/${siteConfig.footer.contacts.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hello HYVORA, I would like to inquire about the Private Residences.')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`py-3 px-3 rounded-xl border text-xs tracking-wider uppercase font-medium flex items-center justify-center gap-2 active:scale-95 transition-all ${
+                isDark
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                  : 'border-emerald-600/40 bg-emerald-600/10 text-emerald-700'
+              }`}
             >
-              {siteConfig.navigation.ctaText}
-            </button>
+              <span>WhatsApp</span>
+            </a>
           </div>
+
+          <button
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onOpenBooking();
+            }}
+            className={`w-full py-3.5 rounded-full font-medium text-xs tracking-widest uppercase transition-all shadow-lg active:scale-95 ${
+              isDark
+                ? 'bg-gradient-to-r from-gold to-gold-light text-[#0a0a0b]'
+                : 'bg-gradient-to-r from-[#b88d3b] to-[#d4a853] text-[#f4f1ea]'
+            }`}
+          >
+            {siteConfig.navigation.ctaText}
+          </button>
         </div>
       </div>
     </>

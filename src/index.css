@@ -137,6 +137,15 @@ em, .font-serif em {
   }
 }
 
+/* Hide scrollbar utility for clean mobile horizontal pill carousels */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   * {

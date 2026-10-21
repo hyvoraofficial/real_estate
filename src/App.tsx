@@ -10,6 +10,7 @@ import { ColorBlockTransition } from './components/ColorBlockTransition';
 import { FloorPlanCarousel } from './components/FloorPlanCarousel';
 import { FinalCTA } from './components/FinalCTA';
 import { BookingModal } from './components/BookingModal';
+import { MobileActionBar } from './components/MobileActionBar';
 
 export const App: React.FC = () => {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -26,7 +27,7 @@ export const App: React.FC = () => {
             <Nav onOpenBooking={() => setIsBookingOpen(true)} />
 
             {/* Main Cinematic Scroll Sequence */}
-            <main>
+            <main className="pb-16 md:pb-0">
               {/* 1. Hero: Scroll-Scrubbed Building Assembly */}
               <Hero />
 
@@ -42,6 +43,9 @@ export const App: React.FC = () => {
               {/* 5. Final CTA + Theme Inversion + Footer */}
               <FinalCTA onOpenBooking={() => setIsBookingOpen(true)} />
             </main>
+
+            {/* Floating Luxury Action Bar for Mobile Visitors */}
+            <MobileActionBar onOpenBooking={() => setIsBookingOpen(true)} />
 
             {/* Booking Modal */}
             <BookingModal

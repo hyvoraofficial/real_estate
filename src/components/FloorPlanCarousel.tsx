@@ -4,7 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { siteConfig, type FloorPlan } from '../config/site';
 import { useCursor } from '../context/CursorContext';
 import { useTheme } from '../context/ThemeContext';
-import { ArrowLeft, ArrowRight, MoveHorizontal } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MoveHorizontal, ZoomIn, MessageCircle, X } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -130,6 +130,8 @@ export const FloorPlanCarousel: React.FC = () => {
   const sheetsGroupRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedPlanDetails, setSelectedPlanDetails] = useState<FloorPlan | null>(null);
+  const [zoomedBlueprint, setZoomedBlueprint] = useState<FloorPlan | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const { setCursor, resetCursor } = useCursor();
   const { theme } = useTheme();
@@ -137,6 +139,16 @@ export const FloorPlanCarousel: React.FC = () => {
   const plans = siteConfig.floorPlansSection.plans;
   const numPlans = plans.length;
   const anglePerPlan = 360 / numPlans; // 90 deg for 4 plans
+
+  // Track mobile viewport for 3D radius calibration
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // High performance refs for butter-smooth 60/120 FPS transforms without React re-render churn
   const currentAngleRef = useRef<number>(0);
@@ -259,6 +271,56 @@ export const FloorPlanCarousel: React.FC = () => {
     });
   };
 
+  // Mobile Touch Swipe Event Handlers for native silky feel
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    if (tweenRef.current) tweenRef.current.kill();
+    isDraggingRef.current = true;
+    dragStartRef.current = {
+      x: e.touches[0].clientX,
+      angle: currentAngleRef.current,
+      time: performance.now(),
+    };
+    velocityRef.current = 0;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingRef.current || e.touches.length !== 1) return;
+    const deltaX = e.touches[0].clientX - dragStartRef.current.x;
+    const now = performance.now();
+    const dt = Math.max(1, now - dragStartRef.current.time);
+
+    const degDelta = deltaX * 0.42;
+    const newAngle = dragStartRef.current.angle + degDelta;
+
+    velocityRef.current = (degDelta / dt) * 16;
+    applyRotation(newAngle);
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    const current = currentAngleRef.current;
+    const vel = Math.max(-20, Math.min(20, velocityRef.current));
+    const predictedAngle = current + vel * 6.5;
+    const snapped = Math.round(predictedAngle / anglePerPlan) * anglePerPlan;
+
+    if (tweenRef.current) tweenRef.current.kill();
+
+    const animObj = { angle: current };
+    tweenRef.current = gsap.to(animObj, {
+      angle: snapped,
+      duration: 0.85,
+      ease: 'power3.out',
+      onUpdate: () => {
+        applyRotation(animObj.angle);
+      },
+      onComplete: () => {
+        applyRotation(snapped);
+      },
+    });
+  };
+
   // Ultra smooth rotational navigation to specific index
   const rotateTo = useCallback((index: number) => {
     if (tweenRef.current) tweenRef.current.kill();
@@ -354,6 +416,27 @@ export const FloorPlanCarousel: React.FC = () => {
           </p>
         </div>
 
+        {/* Mobile Interactive Residence Selector Tabs */}
+        <div className="flex md:hidden items-center justify-start gap-1.5 overflow-x-auto w-full max-w-sm px-2 pb-3 mb-2 no-scrollbar">
+          {plans.map((p, idx) => (
+            <button
+              key={p.id}
+              onClick={() => rotateTo(idx)}
+              className={`px-3 py-1.5 rounded-full text-[11px] font-mono tracking-wider whitespace-nowrap transition-all border active:scale-95 ${
+                idx === activeIndex
+                  ? isDark
+                    ? 'bg-gold text-[#0a0a0b] border-gold font-semibold shadow-[0_0_15px_rgba(212,168,83,0.4)]'
+                    : 'bg-[#b88d3b] text-white border-[#b88d3b] font-semibold shadow-[0_2px_10px_rgba(184,141,59,0.3)]'
+                  : isDark
+                  ? 'bg-white/5 text-[#f2efe9]/75 border-white/10'
+                  : 'bg-black/5 text-[#0a0a0b]/75 border-black/10'
+              }`}
+            >
+              {p.name.replace('The ', '')}
+            </button>
+          ))}
+        </div>
+
         {/* 3D Carousel Stage */}
         <div
           ref={carouselContainerRef}
@@ -361,6 +444,9 @@ export const FloorPlanCarousel: React.FC = () => {
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           onMouseEnter={() => setCursor('drag', 'DRAG')}
           onMouseLeave={() => {
             resetCursor();
@@ -368,7 +454,7 @@ export const FloorPlanCarousel: React.FC = () => {
               isDraggingRef.current = false;
             }
           }}
-          className="relative w-full max-w-4xl h-[420px] sm:h-[460px] md:h-[470px] perspective-1200 cursor-grab active:cursor-grabbing select-none flex items-center justify-center"
+          className="relative w-full max-w-4xl h-[420px] sm:h-[460px] md:h-[470px] perspective-1200 cursor-grab active:cursor-grabbing select-none flex items-center justify-center touch-pan-y"
         >
           {/* Floating Desktop Side Arrow Left */}
           <button
@@ -409,22 +495,22 @@ export const FloorPlanCarousel: React.FC = () => {
           {/* Rotatable 3D Set */}
           <div
             ref={sheetsGroupRef}
-            className="relative w-full max-w-[340px] sm:max-w-[460px] md:max-w-[580px] h-[370px] sm:h-[410px] md:h-[420px] preserve-3d will-change-transform"
+            className="relative w-full max-w-[310px] sm:max-w-[460px] md:max-w-[580px] h-[375px] sm:h-[410px] md:h-[420px] preserve-3d will-change-transform"
             style={{
               transform: 'rotateY(0deg)',
             }}
           >
             {plans.map((plan, i) => {
               const faceAngle = i * anglePerPlan;
-              // Radius of carousel cylinder in 3D
-              const translateZ = 340;
+              // Calibrate radius: on mobile keep 220 so 3D perspective fits screen perfectly; desktop keeps 340
+              const translateZ = isMobile ? 220 : 340;
               const isSelected = i === activeIndex;
 
               return (
                 <div
                   key={plan.id}
                   onClick={() => !isSelected && rotateTo(i)}
-                  className={`absolute inset-0 rounded-2xl p-6 sm:p-7 bg-[#fdfcf9] text-[#111114] shadow-dark-sheet border border-gold/30 flex flex-col justify-between transition-all duration-500 backface-hidden cursor-pointer ${
+                  className={`absolute inset-0 rounded-2xl p-5 sm:p-7 bg-[#fdfcf9] text-[#111114] shadow-dark-sheet border border-gold/30 flex flex-col justify-between transition-all duration-500 backface-hidden cursor-pointer ${
                     isSelected ? 'opacity-100 ring-2 ring-gold/40' : 'opacity-40 hover:opacity-75'
                   }`}
                   style={{
@@ -435,16 +521,16 @@ export const FloorPlanCarousel: React.FC = () => {
                   }}
                 >
                   {/* Blueprint Top Header Bar */}
-                  <div className="flex items-start justify-between border-b border-[#111114]/10 pb-3">
+                  <div className="flex items-start justify-between border-b border-[#111114]/10 pb-2.5">
                     <div>
                       <span className="text-[10px] tracking-widest uppercase font-semibold text-[#b88d3b]">
                         {plan.level}
                       </span>
-                      <h3 className="font-serif text-xl sm:text-2xl text-[#111114] font-semibold mt-0.5">
+                      <h3 className="font-serif text-lg sm:text-2xl text-[#111114] font-semibold mt-0.5 truncate max-w-[190px] sm:max-w-none">
                         {plan.name}
                       </h3>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <span className="text-xs font-semibold text-[#111114]">
                         {plan.price}
                       </span>
@@ -452,27 +538,39 @@ export const FloorPlanCarousel: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* SVG Blueprint Drawing */}
-                  <div className="relative my-auto w-full h-[190px] sm:h-[220px] flex items-center justify-center p-2 bg-[#faf8f4] rounded-lg border border-[#111114]/5 overflow-hidden">
+                  {/* SVG Blueprint Drawing with Tap to Zoom */}
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setZoomedBlueprint(plan);
+                    }}
+                    className="relative my-auto w-full h-[180px] sm:h-[220px] flex items-center justify-center p-2 bg-[#faf8f4] rounded-lg border border-[#111114]/5 overflow-hidden group/plan cursor-zoom-in"
+                  >
                     {renderBlueprintSvg(plan.svgType)}
+
+                    {/* Mobile Tap-to-Zoom Badge */}
+                    <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded bg-black/75 text-white text-[9px] font-mono tracking-wider backdrop-blur-sm opacity-90 sm:opacity-0 group-hover/plan:opacity-100 transition-opacity">
+                      <ZoomIn size={11} className="text-gold" />
+                      <span>Tap to Zoom</span>
+                    </div>
                   </div>
 
                   {/* Blueprint Bottom Spec Tags */}
-                  <div className="pt-3 border-t border-[#111114]/10 flex items-center justify-between text-[11px] font-sans text-[#5c5853]">
-                    <span className="flex items-center gap-1.5 font-medium">
+                  <div className="pt-2.5 border-t border-[#111114]/10 flex items-center justify-between text-[11px] font-sans text-[#5c5853]">
+                    <span className="flex items-center gap-1 font-medium">
                       <span className="w-1.5 h-1.5 rounded-full bg-gold" />
                       {plan.beds}
                     </span>
-                    <span>{plan.baths}</span>
-                    <span>Ceilings: {plan.ceiling}</span>
+                    <span className="hidden sm:inline">{plan.baths}</span>
+                    <span className="hidden sm:inline">Ceilings: {plan.ceiling}</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedPlanDetails(plan);
                       }}
-                      className="px-2.5 py-1 rounded bg-[#111114] text-[#f2efe9] text-[10px] font-medium hover:bg-gold hover:text-[#0a0a0b] transition-colors"
+                      className="px-3 py-1 rounded bg-[#111114] text-[#f2efe9] text-[10px] font-semibold tracking-wider uppercase hover:bg-gold hover:text-[#0a0a0b] active:scale-95 transition-all shadow-sm"
                     >
-                      Specs
+                      View Specs
                     </button>
                   </div>
                 </div>
@@ -490,7 +588,7 @@ export const FloorPlanCarousel: React.FC = () => {
             aria-label="Previous Floor Plan"
             onMouseEnter={() => setCursor('hover')}
             onMouseLeave={resetCursor}
-            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer group active:scale-95 ${
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer group active:scale-90 ${
               isDark
                 ? 'bg-[#15161c] border-2 border-gold/60 text-gold hover:bg-gold hover:text-[#0a0a0b] hover:border-gold hover:shadow-[0_0_30px_rgba(212,168,83,0.5)]'
                 : 'bg-white border-2 border-[#b88d3b] text-[#b88d3b] hover:bg-[#b88d3b] hover:text-white hover:border-[#b88d3b] hover:shadow-[0_4px_25px_rgba(184,141,59,0.35)] shadow-black/10'
@@ -519,7 +617,7 @@ export const FloorPlanCarousel: React.FC = () => {
                   key={p.id}
                   onClick={() => rotateTo(idx)}
                   aria-label={`Go to ${p.name}`}
-                  className={`transition-all duration-300 rounded-full cursor-pointer ${
+                  className={`transition-all duration-300 rounded-full cursor-pointer active:scale-125 ${
                     idx === activeIndex
                       ? isDark ? 'w-6 h-2 bg-gold' : 'w-6 h-2 bg-[#b88d3b]'
                       : isDark ? 'w-2 h-2 bg-white/30 hover:bg-white/70' : 'w-2 h-2 bg-black/30 hover:bg-black/70'
@@ -536,7 +634,7 @@ export const FloorPlanCarousel: React.FC = () => {
             aria-label="Next Floor Plan"
             onMouseEnter={() => setCursor('hover')}
             onMouseLeave={resetCursor}
-            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer group active:scale-95 ${
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer group active:scale-90 ${
               isDark
                 ? 'bg-[#15161c] border-2 border-gold/60 text-gold hover:bg-gold hover:text-[#0a0a0b] hover:border-gold hover:shadow-[0_0_30px_rgba(212,168,83,0.5)]'
                 : 'bg-white border-2 border-[#b88d3b] text-[#b88d3b] hover:bg-[#b88d3b] hover:text-white hover:border-[#b88d3b] hover:shadow-[0_4px_25px_rgba(184,141,59,0.35)] shadow-black/10'
@@ -546,24 +644,27 @@ export const FloorPlanCarousel: React.FC = () => {
           </button>
         </div>
 
-        {/* Gold Pill Element: Drag Hint at bottom that stretches into a pill on hover and shows plan name */}
-        <div className="mt-8 flex justify-center">
+        {/* Mobile Swipe / Drag Hint */}
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <p className="md:hidden text-[10px] font-mono tracking-wider text-gold/80 flex items-center gap-1.5 animate-pulse">
+            <MoveHorizontal size={12} />
+            <span>Swipe card left/right or tap tabs</span>
+          </p>
+
           <div
             onMouseEnter={() => setCursor('hover')}
             onMouseLeave={resetCursor}
-            className={`group relative cursor-pointer flex items-center justify-center transition-all duration-500 ease-luxury px-4 py-2 rounded-full border backdrop-blur-md hover:px-7 ${
+            className={`hidden md:flex group relative cursor-pointer items-center justify-center transition-all duration-500 ease-luxury px-4 py-2 rounded-full border backdrop-blur-md hover:px-7 ${
               isDark
                 ? 'border-gold/40 bg-gold/5 hover:border-gold hover:bg-gold/15 hover:shadow-[0_0_25px_rgba(212,168,83,0.3)] text-gold'
                 : 'border-[#b88d3b]/40 bg-[#b88d3b]/10 hover:border-[#b88d3b] hover:bg-[#b88d3b]/20 hover:shadow-[0_0_20px_rgba(184,141,59,0.25)] text-[#b88d3b]'
             }`}
           >
-            {/* Dot with arrow icon */}
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full animate-ping group-hover:hidden ${isDark ? 'bg-gold' : 'bg-[#b88d3b]'}`} />
               <span className={`w-2 h-2 rounded-full group-hover:hidden ${isDark ? 'bg-gold' : 'bg-[#b88d3b]'}`} />
               <MoveHorizontal size={14} className={`${isDark ? 'text-gold' : 'text-[#b88d3b]'} hidden group-hover:block transition-all`} />
               
-              {/* Dynamic Plan Name shown on pill stretch */}
               <span className={`text-[11px] font-sans uppercase font-medium tracking-widest whitespace-nowrap ${isDark ? 'text-gold' : 'text-[#b88d3b]'}`}>
                 {currentPlan.name}
               </span>
@@ -572,19 +673,111 @@ export const FloorPlanCarousel: React.FC = () => {
         </div>
       </div>
 
-      {/* Plan Details Modal / Drawer */}
+      {/* Interactive Blueprint Fullscreen Lightbox Modal */}
+      {zoomedBlueprint && (
+        <div
+          className={`fixed inset-0 z-50 backdrop-blur-xl flex flex-col items-center justify-between p-4 sm:p-8 transition-all ${
+            isDark ? 'bg-[#0a0a0b]/95 text-[#f2efe9]' : 'bg-[#f4f1ea]/95 text-[#0a0a0b]'
+          }`}
+          onClick={() => setZoomedBlueprint(null)}
+        >
+          {/* Lightbox Top Header */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-4xl flex items-center justify-between border-b pb-4 border-current/15 shrink-0"
+          >
+            <div>
+              <span className={`text-[10px] tracking-ultra uppercase font-semibold ${isDark ? 'text-gold' : 'text-[#b88d3b]'}`}>
+                HIGH-RESOLUTION BLUEPRINT • {zoomedBlueprint.level}
+              </span>
+              <h3 className="font-serif text-xl sm:text-2xl font-light">
+                {zoomedBlueprint.name}
+              </h3>
+            </div>
+            
+            <button
+              onClick={() => setZoomedBlueprint(null)}
+              aria-label="Close Blueprint"
+              className="w-10 h-10 rounded-full flex items-center justify-center border border-current/20 active:scale-90"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* SVG Canvas in Lightbox with Pan/Zoom container */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-3xl my-auto p-4 sm:p-6 bg-[#fdfcf9] rounded-2xl shadow-2xl border border-gold/40 flex items-center justify-center overflow-auto max-h-[60vh] sm:max-h-[70vh]"
+          >
+            <div className="w-full min-w-[320px] max-w-[650px] aspect-[600/420]">
+              {renderBlueprintSvg(zoomedBlueprint.svgType)}
+            </div>
+          </div>
+
+          {/* Lightbox Footer Actions */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-4xl flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-current/15 shrink-0"
+          >
+            <div className="flex items-center gap-4 text-xs font-mono">
+              <span>Area: <strong className={isDark ? 'text-gold' : 'text-[#b88d3b]'}>{zoomedBlueprint.area}</strong></span>
+              <span>Ceiling: <strong>{zoomedBlueprint.ceiling}</strong></span>
+              <span>Valuation: <strong>{zoomedBlueprint.price}</strong></span>
+            </div>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <a
+                href={`https://wa.me/${siteConfig.footer.contacts.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello HYVORA, I reviewed the architectural blueprint for ${zoomedBlueprint.name} (${zoomedBlueprint.area}).`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 sm:flex-none px-4 py-2 rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-400 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95"
+              >
+                <MessageCircle size={14} />
+                <span>WhatsApp Specs</span>
+              </a>
+
+              <button
+                onClick={() => {
+                  setZoomedBlueprint(null);
+                  setSelectedPlanDetails(zoomedBlueprint);
+                }}
+                className={`flex-1 sm:flex-none px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider active:scale-95 transition-all shadow-md ${
+                  isDark
+                    ? 'bg-gold text-[#0a0a0b]'
+                    : 'bg-[#0a0a0b] text-[#f4f1ea]'
+                }`}
+              >
+                Full Monograph Specs
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Details Modal / Drawer (Responsive Bottom Sheet on Mobile) */}
       {selectedPlanDetails && (
-        <div className={`fixed inset-0 z-50 backdrop-blur-md flex items-center justify-center p-6 ${
-          isDark ? 'bg-[#0a0a0b]/85' : 'bg-black/40'
-        }`}>
-          <div className={`max-w-lg w-full border rounded-2xl p-8 relative shadow-2xl transition-colors ${
-            isDark
-              ? 'bg-[#111114] border-gold/30 text-[#f2efe9]'
-              : 'bg-[#ffffff] border-black/10 text-[#0a0a0b]'
-          }`}>
+        <div
+          className={`fixed inset-0 z-50 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-6 transition-all ${
+            isDark ? 'bg-[#0a0a0b]/85' : 'bg-black/40'
+          }`}
+          onClick={() => setSelectedPlanDetails(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full sm:max-w-lg border rounded-t-3xl sm:rounded-2xl p-6 sm:p-8 relative shadow-2xl transition-all max-h-[85vh] overflow-y-auto ${
+              isDark
+                ? 'bg-[#111114] border-gold/30 text-[#f2efe9]'
+                : 'bg-[#ffffff] border-black/10 text-[#0a0a0b]'
+            }`}
+          >
+            {/* Sheet Drag Handle for mobile */}
+            <div className="w-full flex justify-center pb-3 sm:hidden">
+              <div className={`w-12 h-1.5 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/20'}`} />
+            </div>
+
             <button
               onClick={() => setSelectedPlanDetails(null)}
-              className={`absolute top-5 right-5 text-sm uppercase tracking-wider transition-colors ${
+              className={`absolute top-5 right-5 text-sm uppercase tracking-wider transition-colors p-1 ${
                 isDark ? 'text-cream/50 hover:text-cream' : 'text-black/50 hover:text-black'
               }`}
             >
@@ -595,53 +788,66 @@ export const FloorPlanCarousel: React.FC = () => {
             }`}>
               ARCHITECTURAL SPECIFICATION
             </span>
-            <h3 className={`font-serif text-2xl md:text-3xl mt-1 mb-3 ${
+            <h3 className={`font-serif text-2xl md:text-3xl mt-1 mb-2 sm:mb-3 ${
               isDark ? 'text-cream' : 'text-[#0a0a0b]'
             }`}>
               {selectedPlanDetails.name}
             </h3>
-            <p className={`text-xs font-light leading-relaxed mb-6 ${
+            <p className={`text-xs font-light leading-relaxed mb-5 sm:mb-6 ${
               isDark ? 'text-cream/70' : 'text-[#555555]'
             }`}>
               {selectedPlanDetails.description}
             </p>
 
-            <div className={`grid grid-cols-2 gap-4 text-xs border-t border-b py-4 mb-6 ${
+            <div className={`grid grid-cols-2 gap-3 sm:gap-4 text-xs border-t border-b py-4 mb-5 sm:mb-6 ${
               isDark ? 'border-white/10' : 'border-black/10'
             }`}>
               <div>
-                <span className={`block ${isDark ? 'text-cream/40' : 'text-black/50'}`}>Total Area</span>
+                <span className={`block text-[10px] sm:text-xs ${isDark ? 'text-cream/40' : 'text-black/50'}`}>Total Area</span>
                 <span className="font-mono font-medium">{selectedPlanDetails.area}</span>
               </div>
               <div>
-                <span className={`block ${isDark ? 'text-cream/40' : 'text-black/50'}`}>Ceiling Clearance</span>
+                <span className={`block text-[10px] sm:text-xs ${isDark ? 'text-cream/40' : 'text-black/50'}`}>Ceiling Clearance</span>
                 <span className="font-mono font-medium">{selectedPlanDetails.ceiling}</span>
               </div>
               <div>
-                <span className={`block ${isDark ? 'text-cream/40' : 'text-black/50'}`}>Bedrooms / Baths</span>
+                <span className={`block text-[10px] sm:text-xs ${isDark ? 'text-cream/40' : 'text-black/50'}`}>Bedrooms / Baths</span>
                 <span className="font-mono font-medium">{selectedPlanDetails.beds} • {selectedPlanDetails.baths}</span>
               </div>
               <div>
-                <span className={`block ${isDark ? 'text-cream/40' : 'text-black/50'}`}>Private Terrace</span>
+                <span className={`block text-[10px] sm:text-xs ${isDark ? 'text-cream/40' : 'text-black/50'}`}>Private Terrace</span>
                 <span className="font-mono font-medium">{selectedPlanDetails.terrace}</span>
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div>
                 <span className={`text-[10px] uppercase ${isDark ? 'text-cream/40' : 'text-black/50'}`}>Valuation</span>
                 <p className={`font-serif text-xl ${isDark ? 'text-gold' : 'text-[#b88d3b]'}`}>{selectedPlanDetails.price}</p>
               </div>
-              <button
-                onClick={() => setSelectedPlanDetails(null)}
-                className={`px-6 py-2.5 rounded-full font-medium text-xs tracking-wider uppercase transition-colors ${
-                  isDark
-                    ? 'bg-gold text-[#0a0a0b] hover:bg-gold-light'
-                    : 'bg-[#0a0a0b] text-[#f4f1ea] hover:bg-[#b88d3b]'
-                }`}
-              >
-                Inquire Layout
-              </button>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={`https://wa.me/${siteConfig.footer.contacts.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello HYVORA, I would like to inquire about ${selectedPlanDetails.name} (${selectedPlanDetails.price}).`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 sm:flex-none px-4 py-2.5 rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-400 font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-1.5 active:scale-95"
+                >
+                  <MessageCircle size={14} />
+                  <span>WhatsApp</span>
+                </a>
+
+                <button
+                  onClick={() => setSelectedPlanDetails(null)}
+                  className={`flex-1 sm:flex-none px-6 py-2.5 rounded-full font-medium text-xs tracking-wider uppercase transition-colors active:scale-95 ${
+                    isDark
+                      ? 'bg-gold text-[#0a0a0b] hover:bg-gold-light'
+                      : 'bg-[#0a0a0b] text-[#f4f1ea] hover:bg-[#b88d3b]'
+                  }`}
+                >
+                  Inquire Layout
+                </button>
+              </div>
             </div>
           </div>
         </div>

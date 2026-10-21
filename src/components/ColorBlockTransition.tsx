@@ -117,38 +117,38 @@ export const ColorBlockTransition: React.FC = () => {
           className="relative max-w-6xl mx-auto w-full text-[#0a0a0b] flex flex-col items-center opacity-0 z-10"
         >
           {/* Subtle architectural pill label */}
-          <div className="mb-8 inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#0a0a0b]/25 bg-[#0a0a0b]/5 backdrop-blur-sm">
+          <div className="mb-4 sm:mb-6 md:mb-8 inline-flex items-center gap-2 px-3.5 sm:px-4 py-1 sm:py-1.5 rounded-full border border-[#0a0a0b]/25 bg-[#0a0a0b]/5 backdrop-blur-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-[#0a0a0b]" />
-            <span className="text-[10px] tracking-ultra uppercase font-semibold text-[#0a0a0b]">
+            <span className="text-[9px] sm:text-[10px] tracking-ultra uppercase font-semibold text-[#0a0a0b]">
               UNCOMPROMISING LUXURY BENCHMARKS
             </span>
           </div>
 
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#0a0a0b] font-light text-center mb-14 tracking-tight max-w-3xl">
+          <h2 className="font-serif text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-[#0a0a0b] font-light text-center mb-6 sm:mb-10 md:mb-14 tracking-tight max-w-3xl leading-snug">
             Where Craft Meets the{' '}
             <span className="font-serif italic font-normal text-[#0a0a0b]">Absolute</span>
           </h2>
 
           {/* Four Small Outlined Icons with Labels */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10 w-full">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 md:gap-10 w-full">
             {siteConfig.colorBlock.features.map((feature, i) => (
               <div
                 key={feature.title}
                 ref={(el) => {
                   if (el) itemsRef.current[i] = el;
                 }}
-                className="flex flex-col items-center text-center p-6 rounded-xl border border-[#0a0a0b]/15 bg-[#0a0a0b]/[0.03] backdrop-blur-sm transition-transform duration-300 hover:scale-[1.03]"
+                className="flex flex-col items-center text-center p-3.5 sm:p-5 md:p-6 rounded-xl border border-[#0a0a0b]/15 bg-[#0a0a0b]/[0.04] backdrop-blur-sm transition-all duration-300 active:scale-95 hover:scale-[1.03] active:bg-[#0a0a0b]/10 cursor-pointer"
               >
                 {/* Outlined Icon Circle */}
-                <div className="w-14 h-14 rounded-full border border-[#0a0a0b]/30 flex items-center justify-center mb-5 bg-[#d4a853] shadow-sm">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full border border-[#0a0a0b]/30 flex items-center justify-center mb-2 sm:mb-3 md:mb-5 bg-[#d4a853] shadow-sm">
                   {getFeatureIcon(feature.icon)}
                 </div>
 
-                <h3 className="font-sans text-xs md:text-sm font-semibold tracking-wider uppercase text-[#0a0a0b] mb-2">
+                <h3 className="font-sans text-[11px] sm:text-xs md:text-sm font-semibold tracking-wider uppercase text-[#0a0a0b] mb-1 sm:mb-2">
                   {feature.title}
                 </h3>
 
-                <p className="font-sans text-xs text-[#0a0a0b]/80 font-normal leading-relaxed">
+                <p className="font-sans text-[10px] sm:text-xs text-[#0a0a0b]/80 font-normal leading-relaxed">
                   {feature.detail}
                 </p>
               </div>

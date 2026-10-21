@@ -394,7 +394,7 @@ export const Hero: React.FC = () => {
               PRIVATE RESIDENCES
             </span>
             <h1
-              className={`font-serif text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-light tracking-[0.2em] pl-[0.2em] uppercase transition-colors duration-300 ${
+              className={`font-serif text-4xl sm:text-7xl md:text-8xl lg:text-9xl font-light tracking-[0.16em] sm:tracking-[0.2em] pl-[0.16em] sm:pl-[0.2em] uppercase transition-colors duration-300 ${
                 isDark
                   ? 'text-[#f2efe9] drop-shadow-[0_6px_40px_rgba(0,0,0,0.95)]'
                   : 'text-[#0a0a0b] drop-shadow-[0_4px_24px_rgba(184,141,59,0.18)]'
@@ -408,7 +408,7 @@ export const Hero: React.FC = () => {
               }`}
             />
             <p
-              className={`font-serif italic text-base sm:text-xl md:text-2xl font-light tracking-wide transition-colors duration-300 ${
+              className={`font-serif italic text-sm sm:text-xl md:text-2xl font-light tracking-wide transition-colors duration-300 ${
                 isDark ? 'text-gold/90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]' : 'text-[#b88d3b]'
               }`}
             >
@@ -422,16 +422,16 @@ export const Hero: React.FC = () => {
           ref={headlineRef}
           className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 pointer-events-none opacity-0"
         >
-          <div className="max-w-4xl mx-auto space-y-4">
+          <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
             <p
-              className={`text-[11px] md:text-xs tracking-ultra uppercase font-medium transition-colors duration-300 ${
+              className={`text-[10px] md:text-xs tracking-ultra uppercase font-medium transition-colors duration-300 ${
                 isDark ? 'text-gold drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]' : 'text-[#b88d3b]'
               }`}
             >
               SANCTUARY OF THE HORIZON
             </p>
             <h2
-              className={`font-serif text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-light tracking-tight leading-[1.08] transition-colors duration-300 ${
+              className={`font-serif text-2xl sm:text-5xl md:text-7xl lg:text-8xl font-light tracking-tight leading-[1.12] sm:leading-[1.08] transition-colors duration-300 ${
                 isDark
                   ? 'text-[#f2efe9] drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)]'
                   : 'text-[#0a0a0b] drop-shadow-[0_4px_24px_rgba(184,141,59,0.18)]'
@@ -447,7 +447,7 @@ export const Hero: React.FC = () => {
               </em>
             </h2>
             <p
-              className={`max-w-xl mx-auto text-sm md:text-base font-light leading-relaxed pt-2 transition-colors duration-300 ${
+              className={`max-w-xl mx-auto text-xs sm:text-sm md:text-base font-light leading-relaxed pt-1 sm:pt-2 transition-colors duration-300 ${
                 isDark
                   ? 'text-[#f2efe9]/85 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]'
                   : 'text-[#0a0a0b]/80'

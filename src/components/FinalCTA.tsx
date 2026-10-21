@@ -4,7 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { siteConfig } from '../config/site';
 import { useCursor } from '../context/CursorContext';
 import { useTheme } from '../context/ThemeContext';
-import { ArrowUpRight, Check } from 'lucide-react';
+import { ArrowUpRight, Check, MessageCircle } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -206,16 +206,18 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onOpenBooking }) => {
             <form onSubmit={handleQuickForm} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest opacity-60 mb-1">
+                  <label className="block text-[10px] uppercase tracking-widest opacity-60 mb-1 font-medium">
                     Your Name
                   </label>
                   <input
                     required
                     type="text"
+                    inputMode="text"
+                    autoComplete="name"
                     placeholder="Lord / Lady / Name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className={`w-full rounded-lg px-4 py-2.5 text-xs focus:outline-none focus:border-[#b88d3b] transition-colors border ${
+                    className={`w-full rounded-xl px-4 py-3 sm:py-2.5 text-sm sm:text-xs focus:outline-none focus:border-[#b88d3b] transition-colors border ${
                       isDark
                         ? 'bg-[#f4f1ea]/80 border-[#111114]/15 text-[#111114]'
                         : 'bg-[#111114]/80 border-white/10 text-[#f2efe9]'
@@ -223,16 +225,18 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onOpenBooking }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest opacity-60 mb-1">
+                  <label className="block text-[10px] uppercase tracking-widest opacity-60 mb-1 font-medium">
                     Email / Direct Mobile
                   </label>
                   <input
                     required
                     type="text"
+                    inputMode="email"
+                    autoComplete="email"
                     placeholder="contact@entity.com"
                     value={formData.contact}
                     onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                    className={`w-full rounded-lg px-4 py-2.5 text-xs focus:outline-none focus:border-[#b88d3b] transition-colors border ${
+                    className={`w-full rounded-xl px-4 py-3 sm:py-2.5 text-sm sm:text-xs focus:outline-none focus:border-[#b88d3b] transition-colors border ${
                       isDark
                         ? 'bg-[#f4f1ea]/80 border-[#111114]/15 text-[#111114]'
                         : 'bg-[#111114]/80 border-white/10 text-[#f2efe9]'
@@ -242,13 +246,13 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onOpenBooking }) => {
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-widest opacity-60 mb-1">
+                <label className="block text-[10px] uppercase tracking-widest opacity-60 mb-1 font-medium">
                   Collection Interest
                 </label>
                 <select
                   value={formData.interest}
                   onChange={(e) => setFormData({ ...formData, interest: e.target.value })}
-                  className={`w-full rounded-lg px-4 py-2.5 text-xs focus:outline-none focus:border-[#b88d3b] transition-colors border ${
+                  className={`w-full rounded-xl px-4 py-3 sm:py-2.5 text-sm sm:text-xs focus:outline-none focus:border-[#b88d3b] transition-colors border ${
                     isDark
                       ? 'bg-[#f4f1ea]/80 border-[#111114]/15 text-[#111114]'
                       : 'bg-[#111114]/80 border-white/10 text-[#f2efe9]'
@@ -263,12 +267,12 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onOpenBooking }) => {
               </div>
 
               {/* Dark/Gold Pill "Get in touch" Button */}
-              <div className="pt-2 flex flex-col sm:flex-row items-center gap-4 justify-between">
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 justify-between">
                 <button
                   type="submit"
                   onMouseEnter={() => setCursor('hover')}
                   onMouseLeave={resetCursor}
-                  className={`w-full sm:w-auto px-8 py-3.5 rounded-full text-xs font-semibold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 group ${
+                  className={`w-full sm:w-auto px-8 py-3.5 rounded-full text-xs font-semibold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 group active:scale-95 shadow-md ${
                     isDark
                       ? 'bg-[#111114] text-[#f2efe9] hover:bg-gold hover:text-[#0a0a0b] hover:shadow-[0_10px_25px_rgba(212,168,83,0.3)]'
                       : 'bg-gold text-[#0a0a0b] hover:bg-white hover:text-[#0a0a0b] hover:shadow-[0_10px_25px_rgba(212,168,83,0.4)]'
@@ -278,15 +282,27 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onOpenBooking }) => {
                   <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </button>
 
-                <button
-                  type="button"
-                  onClick={onOpenBooking}
-                  onMouseEnter={() => setCursor('hover')}
-                  onMouseLeave={resetCursor}
-                  className="text-xs uppercase tracking-wider font-semibold text-[#b88d3b] hover:underline underline-offset-4"
-                >
-                  Or schedule private visit →
-                </button>
+                <div className="flex items-center justify-between sm:justify-start gap-4">
+                  <a
+                    href={`https://wa.me/${siteConfig.footer.contacts.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hello HYVORA, I would like to request the private investment monograph.')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex sm:hidden items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+                  >
+                    <MessageCircle size={14} />
+                    <span>WhatsApp</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={onOpenBooking}
+                    onMouseEnter={() => setCursor('hover')}
+                    onMouseLeave={resetCursor}
+                    className="text-xs uppercase tracking-wider font-semibold text-[#b88d3b] hover:underline underline-offset-4 py-1"
+                  >
+                    Or schedule private visit →
+                  </button>
+                </div>
               </div>
 
               <p className="text-[10px] opacity-50 text-center pt-2">

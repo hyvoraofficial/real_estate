@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { siteConfig, type ValueCard } from '../config/site';
-import { Building2, ShieldCheck, Compass, MapPin, ArrowUpRight } from 'lucide-react';
+import { Building2, ShieldCheck, Compass, MapPin, ArrowUpRight, X, Phone, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { useCursor } from '../context/CursorContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -32,6 +32,9 @@ export const ValueCards: React.FC = () => {
   const { setCursor, resetCursor } = useCursor();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  const [selectedMobileCard, setSelectedMobileCard] = useState<ValueCard | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
 
   useEffect(() => {
     if (!sectionRef.current) return;
@@ -164,14 +167,49 @@ export const ValueCards: React.FC = () => {
           </p>
         </div>
 
+        {/* Mobile-Only Filter Tabs */}
+        <div className="flex md:hidden items-center gap-2 overflow-x-auto pb-4 mb-6 no-scrollbar">
+          {[
+            { id: 'all', label: 'All Residences (4)' },
+            { id: 'curated', label: 'Sky Villas' },
+            { id: 'verified', label: 'Certified' },
+            { id: 'concierge', label: 'Concierge' },
+          ].map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-mono tracking-wider whitespace-nowrap transition-all border ${
+                activeCategory === cat.id
+                  ? isDark
+                    ? 'bg-gold text-[#0a0a0b] border-gold font-semibold shadow-md'
+                    : 'bg-[#b88d3b] text-white border-[#b88d3b] font-semibold shadow-md'
+                  : isDark
+                  ? 'bg-white/5 text-[#f2efe9]/70 border-white/10'
+                  : 'bg-black/5 text-[#0a0a0b]/70 border-black/10'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
         {/* 2x2 Grid of Image-Background Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-          {siteConfig.valueSection.cards.map((card: ValueCard, index: number) => (
+          {siteConfig.valueSection.cards
+            .filter((card) => {
+              if (activeCategory === 'all') return true;
+              if (activeCategory === 'curated') return card.id.includes('curated');
+              if (activeCategory === 'verified') return card.id.includes('verified');
+              if (activeCategory === 'concierge') return card.id.includes('support') || card.id.includes('insights');
+              return true;
+            })
+            .map((card: ValueCard, index: number) => (
             <div
               key={card.id}
               ref={(el) => {
                 if (el) cardsRef.current[index] = el;
               }}
+              onClick={() => setSelectedMobileCard(card)}
               onMouseMove={(e) => handleMouseMove(e, index)}
               onMouseEnter={() => setCursor('hover')}
               onMouseLeave={() => handleMouseLeave(index)}
@@ -204,19 +242,24 @@ export const ValueCards: React.FC = () => {
               <div className="absolute inset-0 rounded-2xl border border-transparent group-hover:border-gold/70 group-hover:shadow-[inset_0_0_25px_rgba(212,168,83,0.2),0_20px_45px_rgba(0,0,0,0.5)] transition-all duration-500 pointer-events-none" />
 
               {/* Card Header & Content */}
-              <div className="relative h-full flex flex-col justify-between p-8 md:p-10 z-10">
+              <div className="relative h-full flex flex-col justify-between p-6 sm:p-8 md:p-10 z-10">
                 {/* Top bar: Icon & Tag (Luxury Frosted Glass Pills) */}
                 <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-full backdrop-blur-md border border-white/20 bg-black/45 text-gold flex items-center justify-center transition-all duration-300 group-hover:border-gold/60 group-hover:bg-black/65 shadow-lg">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-md border border-white/20 bg-black/45 text-gold flex items-center justify-center transition-all duration-300 group-hover:border-gold/60 group-hover:bg-black/65 shadow-lg">
                     {renderIcon(card.icon, true)}
                   </div>
-                  <span className="text-[10px] tracking-widest uppercase px-3.5 py-1.5 rounded-full backdrop-blur-md border border-gold/40 bg-black/55 text-gold shadow-md font-mono font-medium">
-                    {card.tag}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="md:hidden text-[9px] tracking-wider uppercase px-2.5 py-1 rounded-full border border-gold/40 bg-black/60 text-gold font-mono">
+                      Tap to open ↗
+                    </span>
+                    <span className="text-[10px] tracking-widest uppercase px-3.5 py-1.5 rounded-full backdrop-blur-md border border-gold/40 bg-black/55 text-gold shadow-md font-mono font-medium">
+                      {card.tag}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Bottom text: Title and 2-line description with razor-sharp contrast */}
-                <div className="space-y-3">
+                <div className="space-y-2.5 sm:space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-serif text-2xl md:text-3xl font-light text-[#f2efe9] group-hover:text-gold transition-colors duration-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
                       {card.title}
@@ -235,6 +278,110 @@ export const ValueCards: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Mobile Interactive Quick-Glance Bottom Sheet Modal */}
+      {selectedMobileCard && (
+        <div
+          className={`fixed inset-0 z-50 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300 ${
+            isDark ? 'bg-black/80' : 'bg-black/40'
+          }`}
+          onClick={() => setSelectedMobileCard(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl overflow-hidden border shadow-2xl transition-all duration-300 max-h-[85vh] flex flex-col ${
+              isDark
+                ? 'bg-[#111114] border-gold/30 text-[#f2efe9]'
+                : 'bg-white border-black/10 text-[#0a0a0b]'
+            }`}
+          >
+            {/* Sheet Drag Handle for mobile */}
+            <div className="w-full flex justify-center pt-3 pb-1 sm:hidden">
+              <div className={`w-12 h-1.5 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/20'}`} />
+            </div>
+
+            {/* Image Header with Close Button */}
+            <div className="relative h-48 sm:h-56 w-full shrink-0">
+              <img
+                src={selectedMobileCard.image}
+                alt={selectedMobileCard.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              
+              <button
+                onClick={() => setSelectedMobileCard(null)}
+                aria-label="Close"
+                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md text-white flex items-center justify-center border border-white/20 active:scale-90"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between text-white">
+                <span className="text-[10px] uppercase font-mono tracking-wider px-3 py-1 rounded-full bg-gold/90 text-black font-semibold">
+                  {selectedMobileCard.tag}
+                </span>
+                <span className="text-xs font-serif italic text-gold">Private Collection</span>
+              </div>
+            </div>
+
+            {/* Sheet Body with Specs */}
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div>
+                <h3 className="font-serif text-2xl sm:text-3xl font-light">
+                  {selectedMobileCard.title}
+                </h3>
+                <p className="text-xs sm:text-sm font-light opacity-80 leading-relaxed mt-2">
+                  {selectedMobileCard.description}
+                </p>
+              </div>
+
+              {/* Specification Highlights */}
+              <div className={`grid grid-cols-2 gap-3 p-3.5 rounded-xl border text-xs ${
+                isDark ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-gold shrink-0" />
+                  <span>Titanium & Glass Facade</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-gold shrink-0" />
+                  <span>14ft High Ceilings</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-gold shrink-0" />
+                  <span>Private Express Lift</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-gold shrink-0" />
+                  <span>24/7 Diplomatic Security</span>
+                </div>
+              </div>
+
+              {/* Direct Actions: Call, WhatsApp, Inquire */}
+              <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+                <a
+                  href={`https://wa.me/${siteConfig.footer.contacts.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello HYVORA, I am interested in ${selectedMobileCard.title} (${selectedMobileCard.tag}).`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-3 rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-400 font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <MessageCircle size={15} />
+                  <span>Inquire on WhatsApp</span>
+                </a>
+
+                <a
+                  href={`tel:${siteConfig.footer.contacts.phone.replace(/[^0-9+]/g, '')}`}
+                  className="flex-1 py-3 rounded-full border border-gold/50 bg-gold/10 text-gold font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <Phone size={15} />
+                  <span>Call Family Office</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
